@@ -1,0 +1,41 @@
+name: BTC 4H Price Audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'audit/**'
+      - '.github/workflows/audit_price4h.yml'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install scipy statsmodels
+      - name: Run frozen 4H PRICE audit
+        env:
+          HF_XET_HIGH_PERFORMANCE: '1'
+        run: python audit/audit_price4h.py
+      - name: Publish audit summary
+        if: always()
+        run: |
+          if [ -f audit_results/AUDIT.md ]; then cat audit_results/AUDIT.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_4H_PRICE_INDEPENDENT_AUDIT
+          path: audit_results/
+          if-no-files-found: warn
+          retention-days: 30
