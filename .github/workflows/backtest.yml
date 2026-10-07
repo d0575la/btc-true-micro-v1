@@ -1,0 +1,49 @@
+name: BTC True Micro Backtest
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'requirements.txt'
+      - '.github/workflows/backtest.yml'
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run frozen Stage 3 backtest
+        env:
+          HF_XET_HIGH_PERFORMANCE: '1'
+        run: python src/backtest.py
+
+      - name: Publish summary
+        if: always()
+        run: |
+          if [ -f results/SUMMARY.md ]; then
+            cat results/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC_TRUE_MICRO_V1_STAGE3_RESULTS
+          path: results/
+          if-no-files-found: warn
+          retention-days: 30
